@@ -1,0 +1,8 @@
+{
+  "name": "Clover Inventory Tracker",
+  "description": "A scanning system for managing and verifying Clover device serial numbers and assigned IDs against a database.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": []
+}

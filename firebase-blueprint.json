@@ -1,0 +1,41 @@
+{
+  "entities": {
+    "device": {
+      "title": "Clover Device",
+      "description": "Represents a physical Clover device in inventory.",
+      "type": "object",
+      "properties": {
+        "sn": { "type": "string", "description": "Serial Number of the device." },
+        "cloverId": { "type": "string", "description": "Assigned Clover internal number." },
+        "status": { "type": "string", "description": "Current status or comments." },
+        "rmaDate": { "type": "string", "format": "date", "description": "Date RMA was requested." },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sn"]
+    },
+    "scan": {
+      "title": "Scan Event",
+      "description": "A log of a scanning operation.",
+      "type": "object",
+      "properties": {
+        "sn": { "type": "string" },
+        "enteredId": { "type": "string" },
+        "expectedId": { "type": "string" },
+        "status": { "type": "string", "enum": ["matched", "mismatch", "not-found"] },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" }
+      },
+      "required": ["sn", "status", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/devices/{sn}": {
+      "schema": "device",
+      "description": "Master list of devices indexed by Serial Number."
+    },
+    "/scans/{scanId}": {
+      "schema": "scan",
+      "description": "Chronological log of scanning events."
+    }
+  }
+}
