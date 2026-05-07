@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Device Validation ---
+    function isValidDevice(data) {
+      return data.keys().hasAll(['sn']) &&
+             data.sn is string && data.sn.size() <= 50 &&
+             ( !('cloverId' in data) || (data.cloverId is string && data.cloverId.size() <= 20) ) &&
+             ( !('status' in data) || (data.status is string && data.status.size() <= 500) ) &&
+             ( !('rmaDate' in data) || (data.rmaDate is string && data.rmaDate.size() <= 20) );
+    }
+
+    match /devices/{sn} {
+      allow get: if isSignedIn() && isValidId(sn);
+      allow list: if isSignedIn() && (resource.data.sn != null);
+      
+      // Assume only admins or specific users can modify the master list
+      // For now, let's allow signed-in users to update status or RMA info
+      allow create: if isSignedIn() && isValidDevice(incoming()) && incoming().sn == sn;
+      allow update: if isSignedIn() && isValidDevice(incoming()) && (
+        // Action: Update Status/RMA
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'rmaDate', 'cloverId', 'updatedAt'])
+      );
+    }
+
+    // --- Scan Log Validation ---
+    function isValidScan(data) {
+      return data.keys().hasAll(['sn', 'status', 'timestamp']) &&
+             data.sn is string && data.sn.size() <= 64 &&
+             data.status in ['matched', 'mismatch', 'not-found'] &&
+             data.timestamp is timestamp &&
+             ( !('enteredId' in data) || (data.enteredId is string && data.enteredId.size() <= 20) ) &&
+             ( !('expectedId' in data) || (data.expectedId is string && data.expectedId.size() <= 20) ) &&
+             ( !('userId' in data) || (data.userId == request.auth.uid) );
+    }
+
+    match /scans/{scanId} {
+      allow get: if isSignedIn() && isValidId(scanId);
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidScan(incoming());
+    }
+  }
+}
